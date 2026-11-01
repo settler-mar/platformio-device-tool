@@ -1,0 +1,101 @@
+{
+  "_doc": "Hand-curated extras for module_schema. `description` overrides the auto-detected one. `parallel` lists groups of #defines that must have the same number of elements and are edited together as one table. Column fields: define, label, type (pin/hex/string/enum/number/flag/bool), options (explicit enum values).",
+
+  "ads1115": {
+    "description": "16-bit, 4-channel I2C ADC (Texas Instruments ADS1115 / ADS1015). Each channel can read a single-ended voltage; the raw code is converted by the ReSender formula module.\n\nMode:\n  0 — raw code (adc.0..3)\n  1 — single scaled value\n  2 — signed/unsigned pair (.u.)\n  3 — alternative reporting",
+    "parallel": [
+      {
+        "name": "channels",
+        "columns": [
+          { "define": "ADS1115_ADDR", "label": "I2C addr", "type": "hex" },
+          { "define": "ADS1115_NAME", "label": "name",     "type": "string" },
+          { "define": "ADS1115_MODE", "label": "mode",     "type": "enum",
+            "options": ["0", "1", "2", "3"] }
+        ]
+      }
+    ]
+  },
+
+  "tac11xx": {
+    "description": "RS-485 master for TAC-11xx / KWS-303L energy/water meters. Up to TAC11xx_MAX_CNT devices, polled every TAC11xx_READ_PERIOD ms. Each slot is addressed by one of TAC11xx_DEFAULT_ADDRS and declared with its device type + requested parameter mask.",
+    "parallel": [
+      {
+        "name": "slaves",
+        "columns": [
+          { "define": "TAC11xx_DEFAULT_ADDRS",       "label": "addr",   "type": "number" },
+          { "define": "TAC11xx_DEFAULT_TYPES",       "label": "device", "type": "enum",
+            "options": ["TAC11XX_DEVICE_TAC", "TAC11XX_DEVICE_KWS303L", "TAC11XX_DEVICE_KWS302"] },
+          { "define": "TAC11xx_DEFAULT_PARAM_MASKS", "label": "params mask", "type": "hex" }
+        ]
+      }
+    ]
+  },
+
+  "kws_306l": {
+    "description": "RS-485 master for KWS-306L series meters. Up to KWS306L_MAX_CNT devices on the shared RS-485 bus; each slot is polled every KWS306L_READ_PERIOD ms.",
+    "parallel": [
+      {
+        "name": "slaves",
+        "columns": [
+          { "define": "KWS306L_DEFAULT_ADDRS",       "label": "addr",       "type": "number" },
+          { "define": "KWS306L_DEFAULT_PARAM_MASKS", "label": "params mask","type": "hex" }
+        ]
+      }
+    ]
+  },
+
+  "counter": {
+    "description": "Interrupt-driven pulse counter. Each counter has its own pin and runs independently: pulses are summed, saved periodically, and converted to a rate (e.g. L/min, cpm) via per-counter divisors. Every column below is a parallel array — one entry per counter, in the same order.",
+    "parallel": [
+      {
+        "name": "channels",
+        "columns": [
+          { "define": "COUNTER_PINS",             "label": "pin",       "type": "pin" },
+          { "define": "COUNTER_NAME",             "label": "name",      "type": "string" },
+          { "define": "COUNTER_MODE",             "label": "edge",      "type": "enum",
+            "options": ["CHANGE", "FALLING", "RISING"] },
+          { "define": "COUNTER_INPUT_MODE",       "label": "pin mode",  "type": "enum",
+            "options": ["INPUT", "INPUT_PULLUP", "INPUT_PULLDOWN"] },
+          { "define": "COUNTER_INTERVAL",         "label": "interval (s)", "type": "number" },
+          { "define": "COUNTER_DIVISION",         "label": "divisor",   "type": "number" },
+          { "define": "COUNTER_AVERAGE_SAMPLES",  "label": "avg",       "type": "number" },
+          { "define": "COUNTER_RATE_DIVISION",    "label": "rate div",  "type": "number" },
+          { "define": "COUNTER_RATE_UNIT",        "label": "rate unit", "type": "string" },
+          { "define": "COUNTER_RATE_RAW_UNIT",    "label": "rate raw unit","type": "string" },
+          { "define": "COUNTER_TOTAL_UNIT",       "label": "total unit","type": "string" },
+          { "define": "COUNTER_HA_DEVICE_CLASS",  "label": "HA class",  "type": "enum",
+            "options": ["", "water", "gas", "energy", "power", "temperature", "humidity"] },
+          { "define": "COUNTER_ADDR_COUNTER",     "label": "addr pulses","type": "string" },
+          { "define": "COUNTER_ADDR_RATE",        "label": "addr rate",  "type": "string" },
+          { "define": "COUNTER_ADDR_RATE_RAW",    "label": "addr rate raw","type": "string" },
+          { "define": "COUNTER_ADDR_RECALC",      "label": "addr total", "type": "string" }
+        ]
+      }
+    ]
+  },
+
+  "analog": {
+    "description": "Direct ADC input on one or more pins. Each pin gets its own name and raw value.",
+    "parallel": [
+      {
+        "name": "inputs",
+        "columns": [
+          { "define": "ANALOG_PINS",  "label": "pin",  "type": "pin" },
+          { "define": "ANALOG_NAMES", "label": "name", "type": "string" }
+        ]
+      }
+    ]
+  },
+
+  "didgi_clock": {
+    "description": "7-segment digit display driven by individual GPIO lines (DIDGI_PINS lists the pins).",
+    "parallel": [
+      {
+        "name": "pins",
+        "columns": [
+          { "define": "DIDGI_PINS", "label": "gpio", "type": "pin" }
+        ]
+      }
+    ]
+  }
+}

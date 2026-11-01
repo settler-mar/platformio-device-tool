@@ -1,0 +1,15 @@
+[Unit]
+Description=PlatformIO Device Tool
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/Files/PlatformIO/Projects/platformio-device-tool
+ExecStart=/usr/bin/python3 /mnt/Files/PlatformIO/Projects/platformio-device-tool/dev_tool/server.py --project /mnt/Files/PlatformIO/Projects/MY_HOME --projects-root /mnt/Files/PlatformIO/Projects
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

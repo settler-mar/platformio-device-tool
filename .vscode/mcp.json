@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "platformio-device-tool": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["${workspaceFolder}/dev_tool/mcp_server.py"]
+    }
+  }
+}

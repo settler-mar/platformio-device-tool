@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlatformIO Device Tool</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="brand-main">PlatformIO</span><span class="brand-sub">Device Tool</span></div>
+  <div class="toolbar">
+
+    <!-- GROUP: active PlatformIO project -->
+    <div class="tb-group" id="project-group">
+      <label><span data-i18n="project">проект</span>
+        <select id="project"></select>
+      </label>
+      <button id="btn-project-refresh" class="ghost mini" title="reload projects">↻</button>
+    </div>
+
+    <!-- GROUP: environment / config -->
+    <div class="tb-group" id="env-group">
+      <label><span data-i18n="env">env</span>
+        <select id="env"></select>
+      </label>
+      <button id="btn-env-refresh" class="ghost mini" title="reload platformio.ini">↻</button>
+      <button id="btn-env-new" class="ghost mini" title="new config" data-i18n-title="new_config">+</button>
+    </div>
+
+    <!-- GROUP: upload target (USB port or OTA device) -->
+    <div class="tb-group" id="port-group">
+      <label><span data-i18n="port">port</span>
+        <select id="port"></select>
+      </label>
+      <button id="btn-port-refresh" class="ghost mini" title="rescan ports" data-i18n-title="rescan_ports">↻</button>
+      <span id="serial-state" class="serial-state" aria-live="polite">—</span>
+      <label title="upload transport">
+        <span data-i18n="transport">через</span>
+        <select id="upload-transport" class="mini-select">
+          <option value="usb">USB</option>
+          <option value="ota">OTA</option>
+        </select>
+      </label>
+      <label title="baud rate for Monitor">
+        <select id="baud" class="mini-select">
+          <option>2400</option><option>4800</option><option>9600</option>
+          <option>74880</option><option selected>115200</option>
+          <option>230400</option><option>460800</option><option>921600</option>
+        </select>
+      </label>
+      <button id="btn-devices" class="ghost mini" title="Network devices" data-i18n-title="devices">⌾ net</button>
+      <span id="ota-chip" class="chip hidden" title="click to open Devices">
+        <span class="chip-mode">OTA</span>
+        <span class="chip-ip"></span>
+        <button type="button" id="ota-open" title="open device UI">↗</button>
+        <button type="button" id="ota-clear" title="clear">×</button>
+      </span>
+    </div>
+
+    <span class="spacer"></span>
+
+    <!-- GROUP: primary flash actions (split dropdown) -->
+    <div class="tb-group" id="flash-group">
+      <button id="btn-upload" class="primary" data-i18n="upload" title="Upload firmware">⚡ Upload</button>
+      <details class="menu" id="flash-menu">
+        <summary class="primary menu-toggle" title="More flash actions">▾</summary>
+        <div class="menu-body">
+          <button type="button" class="menu-item" id="btn-build" data-i18n="build">Build</button>
+          <button type="button" class="menu-item" id="btn-uploadfs" data-i18n="upload_fs">Upload FS</button>
+          <button type="button" class="menu-item" id="btn-upload-both" data-i18n="upload_both" title="Upload FS, then firmware">FS + FW</button>
+          <div class="menu-sep"></div>
+          <button type="button" class="menu-item" id="btn-web-build" data-i18n="build_ui" title="Build web_app via nvm + npm run build:esp (copies gz into data/)">Build UI…</button>
+          <div class="menu-sep"></div>
+          <button type="button" class="menu-item danger-item" id="btn-clean" data-i18n="clean" title="Remove .pio build artifacts (local, does not touch the chip)">Clean build</button>
+        </div>
+      </details>
+      <button id="btn-stop" class="warn hidden" data-i18n="stop" title="abort running pio task">■ Stop</button>
+    </div>
+
+    <!-- GROUP: runtime / diagnostics -->
+    <div class="tb-group" id="runtime-group">
+      <button id="btn-mon" data-i18n="monitor" title="open serial monitor">▶ Monitor</button>
+      <button id="btn-device" title="live device WS" disabled>⚿ Device</button>
+      <button id="btn-reset" class="warn ghost" data-i18n="reset_chip" title="reset target">⟲</button>
+    </div>
+
+    <!-- Standalone utilities (not grouped — each a distinct action) -->
+    <button id="btn-build-log" class="ghost tb-item" title="toggle build log">≡ Log</button>
+    <button id="btn-lang" class="ghost mini tb-item" title="language">RU</button>
+  </div>
+</header>
+
+<main>
+  <section class="editor">
+    <div class="tabs">
+      <button class="tab active" data-tab="personal">
+        <span data-i18n="personal">Current config</span>
+        <span class="tab-sub" id="tab-personal-sub"></span>
+      </button>
+      <button class="tab" data-tab="common">
+        <span data-i18n="common">Common (config.h)</span>
+      </button>
+      <button class="tab" data-tab="pio">
+        <span>platformio.ini</span>
+        <span class="tab-sub" id="tab-pio-sub"></span>
+      </button>
+      <button class="tab" data-tab="sources">
+        <span data-i18n="sources">Sources</span>
+      </button>
+      <span class="spacer"></span>
+      <input id="search" type="search" placeholder="search…" data-i18n-placeholder="search">
+      <button id="btn-add-module" class="ghost" data-i18n="add_module">+ module</button>
+      <button id="btn-override" class="ghost" data-i18n="override_default">override default…</button>
+      <button id="btn-add-param" class="ghost" data-i18n="add_param">+ param</button>
+      <button id="btn-save" class="primary" disabled data-i18n="save">Save</button>
+    </div>
+
+    <div class="tab-body" id="pane-personal">
+      <div class="pane-head">
+        <span class="hint" id="personal-hint"></span>
+        <button class="ghost mini" id="btn-view-source" data-i18n="view_source">view source</button>
+      </div>
+      <div id="form-personal"></div>
+    </div>
+
+    <div class="tab-body hidden" id="pane-common">
+      <div class="pane-head">
+        <span class="hint" data-i18n="common_hint">Shared defaults — included by every config via <code>#ifndef</code> guards.</span>
+      </div>
+      <div id="form-common"></div>
+    </div>
+
+    <div class="tab-body hidden" id="pane-pio">
+      <div class="pane-head">
+        <span class="hint" data-i18n="pio_hint">PlatformIO environment section for the selected env, plus full-file view.</span>
+      </div>
+      <div id="form-pio"></div>
+      <details style="margin-top:14px">
+        <summary class="muted" style="cursor:pointer;padding:4px 0" data-i18n="raw_file">raw file</summary>
+        <textarea id="pio-raw" spellcheck="false" style="width:100%;min-height:300px;background:var(--panel);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:10px;font:13px/1.45 var(--mono);margin-top:6px"></textarea>
+      </details>
+    </div>
+
+    <div class="tab-body hidden" id="pane-sources">
+      <div class="pane-head">
+        <span class="hint" data-i18n="sources_hint">Read-only. Every <code>.h</code> under <code>src/</code> grouped by directory.</span>
+      </div>
+      <div class="sources-split">
+        <ul id="source-list"></ul>
+        <div id="source-view">
+          <div class="pane-head"><span class="muted" id="source-path">—</span></div>
+          <div id="form-source"></div>
+          <pre id="source-raw" class="hidden"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-body hidden" id="pane-src-raw">
+      <textarea id="src-raw" spellcheck="false"></textarea>
+    </div>
+  </section>
+
+</main>
+
+<div id="drawers-dock">
+
+<section id="drawer-build" class="drawer hidden">
+  <div class="drawer-head">
+    <strong data-i18n="build_log">Build log</strong>
+    <span class="spacer"></span>
+    <label class="drawer-font-control" title="размер шрифта журнала">A
+      <select class="drawer-font-size" aria-label="размер шрифта журнала">
+        <option value="11">11</option><option value="12">12</option>
+        <option value="14">14</option><option value="16">16</option>
+      </select>
+    </label>
+    <button class="ghost mini" id="btn-clear-build">clear</button>
+    <button class="ghost mini drawer-max" data-target="#drawer-build" title="fullscreen">⤢</button>
+    <button class="ghost mini" id="btn-build-close">×</button>
+  </div>
+  <pre id="log-build" class="log"></pre>
+</section>
+
+<section id="drawer-serial" class="drawer hidden">
+  <div class="drawer-head">
+    <strong data-i18n="serial">Serial</strong>
+    <span class="muted mini" id="drawer-serial-status">—</span>
+    <span class="spacer"></span>
+    <label class="drawer-font-control" title="размер шрифта монитора">A
+      <select class="drawer-font-size" aria-label="размер шрифта монитора">
+        <option value="11">11</option><option value="12">12</option>
+        <option value="14">14</option><option value="16">16</option>
+      </select>
+    </label>
+    <button class="ghost mini" id="btn-serial-connect" data-i18n="serial_connect">Подключить</button>
+    <button class="ghost mini" id="btn-serial-disconnect" data-i18n="serial_disconnect">Отключить</button>
+    <button class="ghost mini" id="btn-reset-dr" title="reset chip">↻ chip</button>
+    <button class="ghost mini" id="btn-clear-serial">clear</button>
+    <button class="ghost mini drawer-max" data-target="#drawer-serial" title="fullscreen">⤢</button>
+    <button class="ghost mini" id="btn-serial-close">×</button>
+  </div>
+  <pre id="log-serial" class="log"></pre>
+  <form id="serial-form" class="serial-input">
+    <input id="serial-send" placeholder="send to serial…" data-i18n-placeholder="serial_send" autocomplete="off">
+    <button type="submit">↵</button>
+  </form>
+  <form id="serial-hex-form" class="serial-input">
+    <input id="serial-hex-send" placeholder="Modbus HEX, e.g. 01 03 00 00 00 01 84 0A" autocomplete="off">
+    <button type="submit">HEX ↵</button>
+  </form>
+</section>
+
+<section id="drawer-device" class="drawer hidden">
+  <div class="drawer-head">
+    <strong>⚿ Device</strong>
+    <span class="muted mini" id="drawer-device-status">—</span>
+    <span class="spacer"></span>
+    <input id="dev-ws-filter" type="search" placeholder="filter addr…" autocomplete="off" class="drawer-filter">
+    <button class="ghost mini" id="btn-ws-chart" title="toggle chart view">📈 chart</button>
+    <button class="ghost mini" id="btn-ws-send" title="send addr#value">↑ send</button>
+    <button class="ghost mini" id="btn-ws-reconnect" title="reconnect">↻</button>
+    <button class="ghost mini" id="btn-ws-clear">clear</button>
+    <button class="ghost mini drawer-max" data-target="#drawer-device" title="fullscreen">⤢</button>
+    <button class="ghost mini" id="btn-device-close">×</button>
+  </div>
+  <div id="dev-chart" class="dev-chart hidden">
+    <div class="dev-chart-head">
+      <strong class="mini">📈 Live chart</strong>
+      <label class="mini">window
+        <select id="chart-window">
+          <option value="10000">10 s</option>
+          <option value="60000" selected>1 min</option>
+          <option value="300000">5 min</option>
+          <option value="900000">15 min</option>
+          <option value="0">all history</option>
+        </select>
+      </label>
+      <label class="mini"><input type="checkbox" id="chart-autoscale" checked> auto-scale Y</label>
+      <span class="spacer"></span>
+      <span class="muted mini" id="chart-hint">no pins — click <b>+ chart</b> on any numeric row below</span>
+      <button class="ghost mini" id="btn-chart-clear">clear pins</button>
+    </div>
+    <svg id="chart-svg" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="chart-legend" class="chart-legend"></div>
+  </div>
+  <div id="log-device" class="log device-log"></div>
+</section>
+
+</div>
+
+<div id="toast"></div>
+
+<dialog id="dlg-add">
+  <form method="dialog">
+    <h3 data-i18n="add_param_title">Add #define</h3>
+    <label>name <input id="add-name" required pattern="[A-Za-z_][A-Za-z0-9_]*"></label>
+    <label>value <input id="add-value"></label>
+    <label><span data-i18n="comment">comment</span> <input id="add-comment"></label>
+    <menu>
+      <button value="cancel" formnovalidate data-i18n="cancel">Cancel</button>
+      <button value="ok" id="add-ok" class="primary" data-i18n="add">Add</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-web-build">
+  <form method="dialog">
+    <h3 data-i18n="build_ui_title">Build UI (web_app)</h3>
+    <label><span data-i18n="node_version">node version</span>
+      <select id="web-node"></select>
+    </label>
+    <label><span data-i18n="npm_script">npm script</span>
+      <select id="web-script">
+        <option value="build:esp" selected>build:esp — build + copy *.gz into data/</option>
+        <option value="build">build — build only</option>
+        <option value="dev">dev — development build</option>
+      </select>
+    </label>
+    <label><input id="web-rebuild" type="checkbox" style="margin-right:6px"><span data-i18n="force_rebuild">force rebuild node-sass</span></label>
+    <p class="hint muted" data-i18n="build_ui_hint">
+      Runs <code>nvm use &lt;ver&gt; &amp;&amp; npm run &lt;script&gt;</code> in <code>web_app/</code>. Output streams into the build log.
+    </p>
+    <menu>
+      <button value="cancel" formnovalidate data-i18n="cancel">Cancel</button>
+      <button value="ok" class="primary" id="web-build-ok" data-i18n="build">Build</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-new">
+  <form method="dialog">
+    <h3 data-i18n="new_config_title">New config file</h3>
+    <label>name <input id="new-name" required pattern="[A-Za-z0-9_\-]+" placeholder="my_device"></label>
+    <label><input id="new-pio" type="checkbox" checked style="margin-right:6px"><span data-i18n="also_pio">also add <code>[env:name]</code> to platformio.ini</span></label>
+    <label><span data-i18n="extends">extends</span>
+      <select id="new-extends">
+        <option value="env:esp32">env:esp32</option>
+        <option value="env:esp12">env:esp12</option>
+        <option value="env:nodemcu">env:nodemcu</option>
+      </select>
+    </label>
+    <menu>
+      <button value="cancel" formnovalidate data-i18n="cancel">Cancel</button>
+      <button value="ok" class="primary" data-i18n="create">Create</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-module" class="wide">
+  <form method="dialog">
+    <h3 data-i18n="add_module_title">Add module</h3>
+    <div class="mod-split">
+      <div class="mod-left">
+        <input id="mod-filter" type="search" placeholder="filter…" style="width:100%;margin-bottom:6px">
+        <ul id="mod-list"></ul>
+      </div>
+      <div class="mod-right">
+        <div id="mod-detail">
+          <p class="muted" data-i18n="mod_pick">Pick a module on the left to see its parameters.</p>
+        </div>
+      </div>
+    </div>
+    <menu>
+      <button value="cancel" formnovalidate data-i18n="cancel">Cancel</button>
+      <button value="ok" class="primary" id="mod-add-btn" disabled data-i18n="add">Add</button>
+    </menu>
+  </form>
+</dialog>
+
+<datalist id="dl-platform">
+  <option value="espressif8266">
+  <option value="espressif8266@3.2.0">
+  <option value="https://github.com/platformio/platform-espressif32.git">
+</datalist>
+<datalist id="dl-board">
+  <option value="nodemcuv2"><option value="esp12e"><option value="esp01_1m">
+  <option value="esp32dev"><option value="esp32doit-devkit-v1"><option value="nodemcu-32s">
+  <option value="wt32-eth01"><option value="esp32s3-devkitc-1"><option value="esp32c3-devkitm-1">
+</datalist>
+<datalist id="dl-framework"><option value="arduino"><option value="espidf"></datalist>
+<datalist id="dl-mcu"><option value="esp32"><option value="esp32s2"><option value="esp32s3"><option value="esp32c3"></datalist>
+<datalist id="dl-fs"><option value="littlefs"><option value="spiffs"><option value="fatfs"></datalist>
+<datalist id="dl-flash"><option value="qio"><option value="dio"><option value="qout"><option value="dout"></datalist>
+<datalist id="dl-reset"><option value="ck"><option value="nodemcu"><option value="none"></datalist>
+<datalist id="dl-baud"><option value="9600"><option value="74880"><option value="115200"><option value="230400"><option value="460800"><option value="921600"></datalist>
+
+<dialog id="dlg-devices" class="wide">
+  <form method="dialog">
+    <h3 data-i18n="devices_title">Network devices</h3>
+    <div class="dev-head">
+      <label><span data-i18n="subnet">subnet</span>
+        <input id="dev-subnet" placeholder="192.168.1.0/24" style="width:160px">
+      </label>
+      <button id="dev-ssdp" type="button" class="primary" data-i18n="ssdp" title="Broadcast M-SEARCH, instant">SSDP</button>
+      <button id="dev-scan" type="button" data-i18n="scan" title="Probe every host on the subnet (slow)">Scan</button>
+      <label><span data-i18n="probe_single">probe</span>
+        <input id="dev-ip" placeholder="192.168.1.148" style="width:140px">
+      </label>
+      <button id="dev-probe" type="button" data-i18n="check">Check</button>
+      <span class="spacer"></span>
+      <span id="dev-status" class="muted mini"></span>
+    </div>
+    <div id="dev-list" class="dev-list"></div>
+    <menu>
+      <button value="cancel" formnovalidate data-i18n="close">Close</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-override">
+  <form method="dialog">
+    <h3 data-i18n="override_title">Override common defaults</h3>
+    <p class="hint" data-i18n="override_hint">Values defined inside <code>#ifndef</code> in <code>config.h</code>. Pick ones to copy here and change.</p>
+    <input id="ov-filter" type="search" placeholder="filter…" style="width:100%;margin-bottom:8px">
+    <div id="ov-list" style="max-height:50vh;overflow:auto"></div>
+    <menu>
+      <button value="cancel" formnovalidate data-i18n="cancel">Cancel</button>
+      <button value="ok" class="primary" data-i18n="add">Add</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-safe">
+  <form method="dialog">
+    <h3 data-i18n="safe_title">Device mismatch — confirm OTA</h3>
+    <p class="hint" data-i18n="safe_hint">Safe-mode check before OTA. The device at this IP does not match the firmware you are about to flash. Review the differences and confirm.</p>
+    <div id="safe-body" style="margin:8px 0"></div>
+    <menu>
+      <button value="cancel" formnovalidate class="primary" data-i18n="safe_cancel">Cancel</button>
+      <button value="ok" data-i18n="safe_proceed" disabled>Flash anyway</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
