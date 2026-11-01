@@ -10,6 +10,7 @@ ExecStart=/usr/bin/python3 /mnt/Files/PlatformIO/Projects/platformio-device-tool
 Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
+Environment="PATH=/home/max/.platformio/penv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 [Install]
 WantedBy=default.target
