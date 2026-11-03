@@ -160,7 +160,9 @@ header{
   #btn-lang{grid-column:7;grid-row:2}
 }
 
-@media (min-width:1500px){
+/* A single row is reserved for very wide screens; at normal desktop widths
+   the second row prevents the port/OTA group from colliding with actions. */
+@media (min-width:2200px){
   header{grid-template-columns:92px minmax(0,1fr)}
   .toolbar{
     grid-template-columns:max-content max-content minmax(260px,1fr)
