@@ -141,14 +141,14 @@ header{
 @media (min-width:900px){
   header{
     display:grid;grid-template-columns:92px minmax(0,1fr);column-gap:16px;
-    align-items:center;
+    align-items:center;padding:6px 12px;gap:8px;
   }
   .brand{grid-column:1;grid-row:1 / span 2}
   .toolbar{
     grid-column:2;grid-row:1 / span 2;
     display:grid;grid-template-columns:max-content max-content minmax(220px,1fr)
       max-content max-content max-content max-content;
-    grid-template-rows:auto auto;align-items:center;gap:6px 8px;
+    grid-template-rows:auto auto;align-items:center;gap:4px 6px;
   }
   .toolbar>.spacer{display:none}
   #project-group{grid-column:1;grid-row:1}
